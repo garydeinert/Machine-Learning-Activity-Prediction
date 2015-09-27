@@ -1,0 +1,102 @@
+---
+title: "Qualitative Activity Recognition Course Project"
+author: "Gary W. Deinert"
+date: "Wednesday, September 23, 2015"
+output: html_document
+---
+#### This project is a review qualitatively assessing and providing feedback on weight lifting exercises.  Activities are recorded and applied to a model evaluating the quality of the activity.  Data collected is used in this report as a basis for a prediction model.  We begin by loading the appropriate libraries (caret, ggplot2, and corrplot) to complete the evaluation.  Data is loaded from the website into a local working directory prior to the beginning of this program.  
+
+```{r setup, cache=TRUE, warning=FALSE, message=FALSE}
+library(caret)
+library(ggplot2)
+library(corrplot)
+setwd("C:/Users/Gary/Desktop/Data Science Specialzation/Machine Learning")
+trainMaster = read.csv("pml-training.csv")
+testMaster = read.csv("pml-testing.csv")
+
+```
+#### The training data set is preprocessed (manually) to achieve the following 'clean up': a) unnecessary / inappropriate variables with little model value are removed; b) Variables with 95% or greater "NA" values are eliminated as low-value input; c) Variables with near-zero variance providing little model value are removed; d) Highly correlated variables are reduced.  
+
+
+```{r preprocess, cache=TRUE, warning=FALSE, message=FALSE}
+workingDF <- trainMaster
+workingDF <- workingDF[-c(1:5)]           ## Remove row.names, X, and timestamps
+NAclear <- colSums(is.na(workingDF))/nrow(workingDF) < 0.95       ## Clear vars > 95% NA
+remNAs <- NAclear[NAclear == TRUE]       ## Trace the removed variables
+workingDF <- workingDF[NAclear]
+nzv <- nearZeroVar(workingDF); workingDF <- workingDF[,-nzv]      # Remove near-zero var
+corMatrix<- cor(workingDF[,-54])           ## remove highly correlated predictors 
+corrplot(corMatrix, type = "lower", tl.cex=0.5)
+removeCorr <- findCorrelation(corMatrix, cutoff=0.90, verbose=FALSE)
+workingDF <- workingDF[,-removeCorr]      ## removed highly correlated variables
+      
+```
+
+#### Data is then split into a working training set and a working test set at a 70%-30% split.  Not knowing the best model construct to choose, we have run 4 different alternatives: K-Nearest Neighbors (KNN), a Gradient Boosting Model (GBM), a Support Vector Machine model (SVM), and a Random Forest model (RF).
+
+#### Cross Validation: We have set up our training model control as a 4-fold cross validation ("cv") method (4 resamples of the data).  
+
+```{r train, cache=TRUE, warning=FALSE, message=FALSE}
+## split into training and test datasets
+inTrain <- createDataPartition(y=workingDF$classe,p=0.7,list=FALSE)
+workingTrain <- workingDF[inTrain,]
+workingTest <- workingDF[-inTrain,]
+dim(workingTrain); dim(workingTest)
+
+modelControl <- (trainControl(method="cv", number=4)) ## Training: 4-fold cross validation
+## ======  we're going to choose from 4 different models: KNN, GBM, SVM, and RF
+## train model KNN
+set.seed(4554)
+modelKNN <- train(classe ~., data=workingTrain, method = "knn", trControl=modelControl)
+## train model GBM
+set.seed(4554)
+modelGBM <- train(classe ~., data=workingTrain, method = "gbm", trControl=modelControl, verbose=FALSE)
+## train model SVM
+set.seed(4554)
+modelSVM <- train(classe ~., data=workingTrain, method = "svmRadial", trControl=modelControl)
+## train model RF
+set.seed(4554)
+modelRF <- train(classe ~., data=workingTrain, method = "rf", trControl = modelControl)
+results <- resamples(list(KNN=modelKNN, GBM=modelGBM, SVM=modelSVM, RF=modelRF))
+print(results)                      ## summarize the distributions and results
+summary(results)
+bwplot(results)
+
+```
+#### It is evident from the summary data as well as the boxplots that the Random Forest (RF) model provides both the highest accuracy at identifying the test data and the highest Kappa value.  For this reason we select the Random Forest as our predictive model. The most predictive model variables within the Random Forest algorithm are shown in the associated chart.   
+
+```{r predict, cache=TRUE, warning=FALSE, message=FALSE}
+## Best predictive model: Random Forest
+plot(varImp(modelRF),top=25, main="Random Forest 25 Most Important Variables")
+predictRF <- predict(modelRF, workingTest)
+confMatrix <- confusionMatrix(workingTest$classe,predictRF, dnn=c("Prediction","RF Model"))
+confMatrix
+```
+### We can also see with the confusion matrix statistics that the predictive accuracy for this model is in excess of 99%:  0.9975, or 99.75% accurate, with an out-of-sample expected error of 0.25%. 
+
+#### The final out-of-sample prediction of class results is identified below.  
+
+```{r final_predict, echo=FALSE, cache=TRUE, warning=FALSE,message=FALSE}
+predictFinal <- predict(modelRF, testMaster)
+predictFinal
+## ====== instructions for uploading results for processing
+answers <- as.character(predictFinal)
+pml_write_files = function(x){
+      n = length(x)
+      for(i in 1:n){
+            filename = paste0("problem_id_",i,".txt")
+            write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+      }
+}
+pml_write_files(answers)
+
+
+
+
+
+
+
+
+```
+
+
