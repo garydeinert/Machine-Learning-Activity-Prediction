@@ -63,7 +63,10 @@ summary(results)
 bwplot(results)
 
 ```
-#### It is evident from the summary data as well as the boxplots that the Random Forest (RF) model provides both the highest accuracy at identifying the test data and the highest Kappa value.  For this reason we select the Random Forest as our predictive model. The most predictive model variables within the Random Forest algorithm are shown in the associated chart.   
+
+### Model training complete.  Now developing the predictive model.  
+
+#### We see from the summary data as well as boxplots that the Random Forest (RF) model provides both the highest accuracy at identifying the test data and the highest Kappa value.  For this reason we select the Random Forest as our predictive model. The most predictive model variables within the Random Forest algorithm are shown in the associated chart.   
 
 ```{r predict, cache=TRUE, warning=FALSE, message=FALSE}
 ## Best predictive model: Random Forest
@@ -72,7 +75,10 @@ predictRF <- predict(modelRF, workingTest)
 confMatrix <- confusionMatrix(workingTest$classe,predictRF, dnn=c("Prediction","RF Model"))
 confMatrix
 ```
-### We can also see with the confusion matrix statistics that the predictive accuracy for this model is in excess of 99%:  0.9975, or 99.75% accurate, with an out-of-sample expected error of 0.25%. 
+
+### Predictive accuracy and out-of-sample error expectations.  
+
+#### We can also see with the confusion matrix statistics that the predictive accuracy for this model is in excess of 99%:  0.9975, or 99.75% accurate, with an out-of-sample expected error of 0.25%. 
 
 #### The final out-of-sample prediction of class results is identified below.  
 
